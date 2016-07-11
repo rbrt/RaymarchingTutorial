@@ -44,7 +44,7 @@
 				return sphereDistance(p);
 			}
 
-			float3 normal (float p)
+			float3 normal (float3 p)
 			{
 				const float eps = 0.01;
 
@@ -58,7 +58,7 @@
 			}
 
 			fixed4 simpleLambert (fixed3 normal, fixed3 position) {
-				fixed3 lightDir = position - _WorldSpaceLightPos0.xyz; // Light direction
+				fixed3 lightDir = _WorldSpaceLightPos0.xyz; // Light direction
 				fixed3 lightCol = _LightColor0.rgb;		// Light color
 
 				fixed NdotL = max(dot(normal, lightDir),0);
