@@ -166,7 +166,7 @@
 				}
 				fixed4 fill = fixed4(_FillColor.xyz, 1);
 				fill.xyz *= abs(direction.x * (sin(_Time.y * 2) + 2) / 2) * 5 * abs(direction.y * 3);
-				return fixed4(1,1,1,1);
+				return fill;
 			}
 
 			v2f vert(appdata_full v)
