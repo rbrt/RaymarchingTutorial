@@ -6,6 +6,8 @@
 		_Radius("Radius", Float) = 0
 		_Color ("Color", Color) = (0,0,0,0)
 		_MinDistance ("MinDistance", Float) = 0.01
+		_SpecularPower ("SpecularPower", Float) = 0
+		_Gloss ("Gloss", Float) = 0
 	}
 	SubShader
 	{
@@ -33,6 +35,8 @@
 			float _Radius;
 			fixed4 _Color;
 			float _MinDistance;
+			float _SpecularPower;
+			float _Gloss;
 
 			float sphereDistance (float3 p)
 			{
@@ -57,21 +61,26 @@
 				);
 			}
 
-			fixed4 simpleLambert (fixed3 normal, fixed3 position) {
+			fixed4 simpleLambert (fixed3 normal, fixed3 position, float3 viewDirection) {
 				fixed3 lightDir = _WorldSpaceLightPos0.xyz; // Light direction
 				fixed3 lightCol = _LightColor0.rgb;		// Light color
 
+				// Specular
 				fixed NdotL = max(dot(normal, lightDir),0);
 				fixed4 c;
-				c.rgb = NdotL * _Color * lightCol;
+
+				fixed3 h = (lightDir - viewDirection) / 2.;
+				fixed s = pow( dot(normal, h), _SpecularPower) * _Gloss;
+				c.rgb = _Color * lightCol * NdotL + s;
 				c.a = 1;
+
 				return c;
 			}
 
-			fixed4 renderSurface(float3 p)
+			fixed4 renderSurface(float3 p, float3 direction)
 			{
 				float3 n = normal(p);
-				return simpleLambert(n, p);
+				return simpleLambert(n, p, direction);
 			}
 
 			fixed4 raymarch(float3 position, float3 direction)
@@ -81,7 +90,7 @@
 					float distance = map(position);
 					if (distance < _MinDistance)
 					{
-						return renderSurface(position);
+						return renderSurface(position, direction);
 					}
 
 					position += distance * direction;
