@@ -117,10 +117,16 @@
 				return d1+d2;
 			}
 
+			float opRep(float3 p, float3 c)
+			{
+			    float3 q = fmod(p,c)-0.5*c;
+			    return opDisplace(q);
+			}
+
 			float3 opApplyMatrix( float3 p, float4x4 m )
 			{
 			    float4 q = mul(inverse(m), float4(p,1));
-				return opDisplace(q.xyz);
+				return opRep(q.xyz, 100);
 			}
 
 			float4x4 translationMatrix(float3 coords)
@@ -210,7 +216,7 @@
 			{
 				//float3 torus = opApplyMatrix(p, mul(scalingMatrix(2), rotationMatrix(float3(90, 0, 0))));
 				//return opTwist(torus, _Time.x);
-				return opApplyMatrix(p, rotationMatrix(float3(90, 0, 0)));
+				return opApplyMatrix(p, mul(translationMatrix(float3(-500,500, -_Time.y * 20)), rotationMatrix(float3(90, 0, 0))));
 			}
 
 			float map(float3 p)
@@ -229,6 +235,53 @@
 						map(p + float3(0, 0, eps)	) - map(p - float3(0, 0, eps))
 					)
 				);
+			}
+
+			float3x3 generateRotation(float degrees){
+				float3x3 newMatrix = float3x3(1,0,0, 0,1,0, 0,0,1);
+
+				float cosA = cos(radians(degrees));
+				float sinA = sin(radians(degrees));
+		        newMatrix[0][0] = cosA + (1.0 - cosA) / 3.0;
+		        newMatrix[0][1] = 1./3. * (1.0 - cosA) - sqrt(1./3.) * sinA;
+		        newMatrix[0][2] = 1./3. * (1.0 - cosA) + sqrt(1./3.) * sinA;
+		        newMatrix[1][0] = 1./3. * (1.0 - cosA) + sqrt(1./3.) * sinA;
+		        newMatrix[1][1] = cosA + 1./3.*(1.0 - cosA);
+		        newMatrix[1][2] = 1./3. * (1.0 - cosA) - sqrt(1./3.) * sinA;
+		        newMatrix[2][0] = 1./3. * (1.0 - cosA) - sqrt(1./3.) * sinA;
+		        newMatrix[2][1] = 1./3. * (1.0 - cosA) + sqrt(1./3.) * sinA;
+		        newMatrix[2][2] = cosA + 1./3. * (1.0 - cosA);
+
+				return newMatrix;
+			}
+
+			float myClamp(float x){
+				if (x < 0){
+					return 0;
+				}
+				else if (x > 1){
+					return 1;
+				}
+				return x + (1 / 255);
+			}
+
+			float3 shift(float3 color, float degrees){
+				float3x3 shiftMatrix = generateRotation(degrees);
+				float3 newColor = color;
+
+				newColor.r = color.r * shiftMatrix[0][0] + color.g * shiftMatrix[0][1] + color.b * shiftMatrix[0][2];
+				newColor.g = color.r * shiftMatrix[1][0] + color.g * shiftMatrix[1][1] + color.b * shiftMatrix[1][2];
+				newColor.b = color.r * shiftMatrix[2][0] + color.g * shiftMatrix[2][1] + color.b * shiftMatrix[2][2];
+
+				return float3(myClamp(newColor.r), myClamp(newColor.g), myClamp(newColor.b));
+			}
+
+			float3 palette(float t, float3 a, float3 b, float3 c, float3 d){
+			    return a + b*cos( 6.28318*(c*t+d) );
+			}
+
+			float3 paletteConversionA(float t){
+				return palette(t, float3(0.5, 0.5, 0.5), float3(0.5, 0.5, 0.5), float3(2.0, 1.0, 0.0), float3(0.50, 0.20, 0.25));
 			}
 
 			fixed4 simpleLambert (fixed3 normal, fixed3 position, float3 viewDirection) {
@@ -260,7 +313,9 @@
 					float distance = map(position);
 					if (distance < _MinDistance)
 					{
-						return renderSurface(position, direction);
+						fixed4 c = renderSurface(position, direction);
+						c.rgb = shift(c.rgb, i * 10 + _Time.y * 10);
+						return c;
 					}
 
 					position += distance * direction;
