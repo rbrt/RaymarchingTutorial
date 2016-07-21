@@ -29,7 +29,7 @@
 				float3 wPos : TEXCOORD0;	// World position
 			};
 
-			#define STEPS 200
+			#define STEPS 100
 			#define STEP_SIZE 0.001
 
 			float4 _Centre;
@@ -43,6 +43,12 @@
 			float sphereDistance (float3 p)
 			{
 			    return distance(p, _Centre) - _Radius;
+			}
+
+			float torusDistance(float3 p, float3 t)
+			{
+			  float3 q = float3(length(p.xz)-t.x, length(p.xz)-t.x, p.y);
+			  return length(q)-t.y;
 			}
 
 			float sdfBox (half3 p, half3 s)
@@ -98,10 +104,23 @@
 			     return transpose(cofactors) / determinant(input);
 			 }
 
+			float displacement(float3 p)
+			{
+				float intensity = .9;
+				return sin(p.x * intensity)*sin(p.y * intensity) * sin(p.z * intensity + _Time.y * 5);
+			}
+
+			float opDisplace(float3 p)
+			{
+				float d1 = torusDistance(p, float3(20,20,20));
+				float d2 = displacement(p);
+				return d1+d2;
+			}
+
 			float3 opApplyMatrix( float3 p, float4x4 m )
 			{
 			    float4 q = mul(inverse(m), float4(p,1));
-			    return sdfBox(q.xyz, float3(10,10,10));
+				return opDisplace(q.xyz);
 			}
 
 			float4x4 translationMatrix(float3 coords)
@@ -144,6 +163,20 @@
 				return mat;
 			}
 
+			float opTwist( float3 p, float intensity)
+			{
+			    float c = cos(intensity*p.y);
+			    float s = sin(intensity*p.y);
+
+				float3 q = float3(
+					c * p.x + (-s * p.z),
+					s * p.x + c * p.z,
+					p.y
+				);
+
+			    return sdfBox(q, float3(20,20,20));
+			}
+
 			float3 opTranslate(float3 p, float4 coords)
 			{
 				float4x4 mat = float4x4(1.0,0.0,0.0,coords.x,
@@ -175,7 +208,9 @@
 
 			float sdf1(float3 p)
 			{
-				return opApplyMatrix(p, scalingMatrix(1));
+				//float3 torus = opApplyMatrix(p, mul(scalingMatrix(2), rotationMatrix(float3(90, 0, 0))));
+				//return opTwist(torus, _Time.x);
+				return opApplyMatrix(p, rotationMatrix(float3(90, 0, 0)));
 			}
 
 			float map(float3 p)
